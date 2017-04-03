@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;����PA1
-;�����������ϴ����λ
+;按键PA1
+;打包数据鼠标上传标记位
 ;PA0?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #include	<KSL8M163.INC>
@@ -309,17 +309,17 @@ SEND_CODE_MATCH_NEXT:
 		BCR			F_RF_MATCH
 		LCALL		SET_RF_ADDR
 		LCALL		EEPROM_SAVE_ROLL
-		BSR			PORTA,7
+		BSR			PORTC,0
 		LCALL		DELAY_200MS
-		BCR			PORTA,7
+		BCR			PORTC,0
 		LCALL		DELAY_200MS
-		BSR			PORTA,7
+		BSR			PORTC,0
 		LCALL		DELAY_200MS
-		BCR			PORTA,7
+		BCR			PORTC,0
 		LCALL		DELAY_200MS
-		BSR			PORTA,7
+		BSR			PORTC,0
 		LCALL		DELAY_200MS
-		BCR			PORTA,7
+		BCR			PORTC,0
 SEND_CODE_MATCH_EXIT:
 		LCALL		RF_SET8DB_PWR
 		LCALL		SET_TX_MODE
@@ -444,14 +444,18 @@ CHECK_SLEEP_LOOP:
 CHECK_SLEEP_RESET:
 		CLRR		R_SLEEP_TMR_L
 		CLRR		R_SLEEP_TMR_H
-		RET
-		
-
+		RET		
 KEY_SCAN:
-		MOVR		PORTA,TO_A
-		XORIA		B'11111111'
-		ANDIA		B'11011111'
-		MOVAR		R_KEY_BUF
+		MOVR PORTA,TO_A  ; 获取PA的数据
+	    XORIA	 B'11111111'  //为0 可以检测到
+	    ANDIA	 B'00011100'
+	    MOVAR	 R_KEY_BUF
+	    MOVIA  0x02
+	    RLR  R_KEY_BUF,TO_R	  
+	    MOVR PORTC,TO_A  ; 获取PA的数据
+	    XORIA	 B'11111111'   ;获取低3位
+	    ANDIA	 B'00000111'
+	    IORAR	 R_KEY_BUF,TO_R ;并到IORAR上
 		RET
 KEY_COMPARE:			
 		MOVR		R_KEY_OLD,TO_A
@@ -477,8 +481,25 @@ KEY_HANDLE:
 		BCR			F_RF_SEND_ZERO_TEMP
 		BCR			F_KEY
 		BCR			F_KEY_REPEAT
-		
-   		MOVR		R_KEY_STATE,TO_A
+		MOVR		R_KEY_BAK,TO_A
+		XORAR		R_KEY_STATE,TO_A
+		BTSC		STATUS,Z
+		BSR			F_KEY_REPEAT
+		MOVR		R_KEY_STATE,TO_A
+		MOVAR		R_KEY_BAK		
+		MOVR		R_KEY_STATE,TO_A
+		XORWI		0X08
+		BTSC		STATUS,Z
+		LJUMP		KEY_HANDLE_A7
+		MOVR		R_KEY_STATE,TO_A
+		XORWI		0X04
+		BTSC		STATUS,Z
+		LJUMP		KEY_HANDLE_A1
+		MOVR		R_KEY_STATE,TO_A
+		XORWI		0X02
+		BTSC		STATUS,Z
+		LJUMP		KEY_HANDLE_A3
+		MOVR		R_KEY_STATE,TO_A
 		XORWI		0X10
 		BTSC		STATUS,Z
 		LJUMP		KEY_HANDLE_A6
@@ -510,9 +531,6 @@ KEY_HANDLE_A7:
 KEY_HANDLE_A1:
 KEY_HANDLE_A3:
 		BTSS		F_KEY_REPEAT
-KEY_HANDLE_A5:
-KEY_HANDLE_A2:
-KEY_HANDLE_A4:
 KEY_HANDLE_A6:
 		LCALL		KEY_HANDLE_PACKAGE
 		BSR			F_KEY
@@ -616,14 +634,14 @@ IO_CONFIG:
 		MOVAR		TRISA
 		BCR			TRISC,0
 		BANKSEL    	PORTA
-		MOVIA		B'01111111'
+		MOVIA		B'01100001'
 		MOVAR       PORTA       			;;
 	
 		BANKSEL    	TRISC
-		MOVIA		B'10000100'				;; 0=Output, 1=Input.
+		MOVIA		B'10000111'				;; 0=Output, 1=Input.
 		MOVAR		TRISC
 		BANKSEL    	PORTC
-		MOVIA		B'10100100'
+		MOVIA		B'10100000'
 		MOVAR       PORTC       			;;
 		RET
 ;;------------------------------------------------
